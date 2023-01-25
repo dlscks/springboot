@@ -1,0 +1,29 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '2.7.3'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '11'
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools' //개발시 필요한 도구 배포할때는 제거
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	//jstl
+	implementation 'javax.servlet:jstl:1.2'
+	//spring boot web
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	//jsp
+	implementation 'org.apache.tomcat.embed:tomcat-embed-jasper'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
