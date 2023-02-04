@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +28,9 @@ import com.example.demo.backend_todolist.service.TodoService;
 
 //@RestController = @Controller + @ResponseBody
 //@Controller
+
+@CrossOrigin("*") //다른포트번호도 호환되게 사용
+//@CrossOrigin(origins = {"http://localhost:3000"})
 @RestController
 public class TodoController {
 	
