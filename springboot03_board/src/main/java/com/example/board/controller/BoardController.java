@@ -3,6 +3,10 @@ package com.example.board.controller;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,11 +16,15 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Controller;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
+
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -104,9 +112,9 @@ public class BoardController {
 	public String writeProMethod( BoardDTO dto, PageDTO pv, HttpServletRequest request) throws IllegalStateException, IOException {
 		MultipartFile file = dto.getFilename();
 		if (file!=null && !file.isEmpty()) {
-			UUID random = saveCopyFile(file, request);
+			UUID random = saveCopyFile(file);
 			dto.setUpload(random + "_" + file.getOriginalFilename());
-			file.transferTo(new File(file.getOriginalFilename()));
+			file.transferTo(new File(random+ "_" +file.getOriginalFilename()));
 		}
 
 		dto.setIp(request.getRemoteAddr());	
@@ -115,15 +123,17 @@ public class BoardController {
 
 		// 답변글이면
 		if (dto.getRef() != 0) {
-			return "redirect:/board/list/" + pv.getCurrentPage();
+//			return "redirect:/board/list/" + pv.getCurrentPage();
+			return String.valueOf(pv.getCurrentPage());
 		} else { // 제목글
-			return "redirect:/board/list/1";
+//			return "redirect:/board/list/1";
+			return String.valueOf(1);
 		}
 	}// end writeProMethod()
 	
 	
 	@RequestMapping(value="/board/update/{num}", method=RequestMethod.GET)
-	public BoardDTO updateMethod(int num) {
+	public BoardDTO updateMethod(@PathVariable("num") int num) {
 //		 mav.addObject("dto", service.updateSelectProcess(num));
 //		 mav.addObject("currentPage", currentPage);
 //		 mav.setViewName("board/update");
@@ -133,22 +143,27 @@ public class BoardController {
 	}//end updateMethod()
 	
 	@RequestMapping(value="/board/update", method=RequestMethod.PUT)
-	public void updateProMethod(@RequestBody BoardDTO dto, HttpServletRequest request) {
+	public void updateProMethod( BoardDTO dto, HttpServletRequest request) throws IllegalStateException, IOException {
 		System.out.printf("num: %d, writer:%s\n", dto.getNum(), dto.getWriter());
 		MultipartFile file = dto.getFilename();
 		if(file != null && !file.isEmpty()) {
-			UUID random = saveCopyFile(file, request);
+			UUID random = saveCopyFile(file);
 			dto.setUpload(random + "_" + file.getOriginalFilename());
+			file.transferTo(new File(random+"_"+file.getOriginalFilename()));
 		}
 		
-		service.updateProcess(dto, urlPath(request));
+//		service.updateProcess(dto, urlPath(request));
+		service.updateProcess(dto, filePath);
+		
+		
 //		return "redirect:/board/list?currentPage=" + currentPage;
 	}//end updateProMethod
 	
 	
 	@RequestMapping(value="/board/delete/{num}",method=RequestMethod.DELETE)
 	public void deleteMethod(@PathVariable("num") int num, HttpServletRequest request) {
-		service.deleteProcess(num, urlPath(request));
+//		service.deleteProcess(num, urlPath(request));
+		service.deleteProcess(num, filePath);
 		
 //		int totalRecord = service.countProcess();
 //		this.pdto = new PageDTO(this.currentPage, totalRecord);
@@ -158,18 +173,18 @@ public class BoardController {
 	
 	
 
-	private UUID saveCopyFile(MultipartFile file, HttpServletRequest request) {
+	private UUID saveCopyFile(MultipartFile file) {
 		String fileName = file.getOriginalFilename();
 
 		// 중복파일명을 처리하기 위해 난수 발생
 		UUID random = UUID.randomUUID();
 
-		File fe = new File(urlPath(request));
+		File fe = new File(filePath);
 		if (!fe.exists()) {
 			fe.mkdir();
 		}
 
-		File ff = new File(urlPath(request), random + "_" + fileName);
+		File ff = new File(filePath, random + "_" + fileName);
 
 		try {
 			FileCopyUtils.copy(file.getInputStream(), new FileOutputStream(ff));
@@ -198,11 +213,29 @@ public class BoardController {
 		return service.contentProcess(num);
 	}// end viewMethod()
 
-	@RequestMapping("/board/contentdownload")
-	public ModelAndView downMethod(int num, ModelAndView mav) {
-		mav.addObject("num", num);
-		mav.setViewName("download");
-		return mav;
+	@ResponseBody
+	@RequestMapping("/board/contentdownload/{filename}")
+	public ResponseEntity<Resource> downMethod(@PathVariable("filename") String filename) throws IOException {
+	  String fileName = filename.substring(filename.indexOf("_") + 1);
+	//파일명이 한글일때 인코딩 작업을 한다.
+			String str = URLEncoder.encode(fileName, "UTF-8"); 
+			
+			//원본파일명에서 공백이 있을 때, +로 표시가 되므로 공백으로 처리해줌
+			str = str.replaceAll("\\+","%20");
+			Path path = Paths.get(filePath+"\\"+filename);
+			Resource resource = new InputStreamResource(Files.newInputStream(path));
+			
+			System.out.println("resource:" + resource.getFilename());
+			
+			return ResponseEntity.ok()
+					.header(HttpHeaders.CONTENT_TYPE, "application/octet-stream")
+					.header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename="+str+";")
+					.body(resource);
 	}// end downMethod()
+
+
+
+
+
 
 }// end class
